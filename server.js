@@ -1,34 +1,47 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static('public'));
-
-const activeRooms = {};
+// Serve static files from 'public' folder
+app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+
+    // Create a room
     socket.on('create-room', (roomCode) => {
-        activeRooms[roomCode] = { sender: socket.id, receiver: null };
         socket.join(roomCode);
+        console.log(`Room created: ${roomCode}`);
     });
 
+    // Join a room
     socket.on('join-room', (roomCode) => {
-        if (activeRooms[roomCode] && !activeRooms[roomCode].receiver) {
-            activeRooms[roomCode].receiver = socket.id;
-            socket.join(roomCode);
-            io.to(roomCode).emit('start-connection', roomCode);
-            delete activeRooms[roomCode]; 
-        } else {
-            socket.emit('invalid-code', 'Invalid or expired code!');
-        }
+        socket.join(roomCode);
+        console.log(`User joined room: ${roomCode}`);
+        // Notify the sender that receiver has joined
+        socket.to(roomCode).emit('receiver-joined', socket.id);
     });
 
-    socket.on('signal', (data) => {
-        socket.to(data.room).emit('signal', data);
+    // WebRTC Signaling (Offer, Answer, ICE Candidates)
+    socket.on('offer', (data) => {
+        socket.to(data.room).emit('offer', data.offer);
+    });
+
+    socket.on('answer', (data) => {
+        socket.to(data.room).emit('answer', data.answer);
+    });
+
+    socket.on('ice-candidate', (data) => {
+        socket.to(data.room).emit('ice-candidate', data.candidate);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
     });
 });
 
