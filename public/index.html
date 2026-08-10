@@ -111,7 +111,7 @@
         };
 
         function generateCode() {
-            return Math.random().toString(36.substring(2), 7).substring(2, 8).toUpperCase();
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
         // --- SENDER LOGIC ---
@@ -127,8 +127,6 @@
             socket.emit('create-room', currentRoom);
 
             pc = new RTCPeerConnection(rtcConfig);
-
-            // Create Data Channel for file transfer
             dataChannel = pc.createDataChannel('file-transfer');
             setupDataChannel();
 
@@ -169,11 +167,10 @@
         }
 
         function sendFile() {
-            const CHUNK_SIZE = 16384; // 16KB chunks
+            const CHUNK_SIZE = 16384;
             const reader = new FileReader();
             let offset = 0;
 
-            // Send metadata first (Name and Size)
             dataChannel.send(JSON.stringify({
                 name: fileToSend.name,
                 size: fileToSend.size,
@@ -203,9 +200,10 @@
             readNextChunk();
         }
 
-
         // --- RECEIVER LOGIC ---
-        document.getElementById('connect-btn').addEventListener('click', async () => {
+        document.getElementById('connect-btn').addEventListener('click', async (e) => {
+            e.preventDefault(); // Prevents page reload
+
             currentRoom = document.getElementById('room-code-input').value.trim();
             if (!currentRoom) {
                 alert('Please enter a valid code');

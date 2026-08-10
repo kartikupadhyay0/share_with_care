@@ -7,27 +7,22 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Serve static files from 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    // Create a room
     socket.on('create-room', (roomCode) => {
         socket.join(roomCode);
         console.log(`Room created: ${roomCode}`);
     });
 
-    // Join a room
     socket.on('join-room', (roomCode) => {
         socket.join(roomCode);
         console.log(`User joined room: ${roomCode}`);
-        // Notify the sender that receiver has joined
         socket.to(roomCode).emit('receiver-joined', socket.id);
     });
 
-    // WebRTC Signaling (Offer, Answer, ICE Candidates)
     socket.on('offer', (data) => {
         socket.to(data.room).emit('offer', data.offer);
     });
