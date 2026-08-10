@@ -235,6 +235,49 @@
             color: #c084fc;
             font-weight: 600;
         }
+
+        /* Mobile Responsive Adjustments */
+        @media (max-width: 480px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+                overflow-y: auto;
+                padding: 15px;
+                justify-content: flex-start;
+            }
+
+            .header-container {
+                margin-top: 20px;
+                margin-bottom: 15px;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            .subtitle {
+                font-size: 12px;
+                padding: 0 10px;
+            }
+
+            .card {
+                width: 100% !important;
+                max-width: 100%;
+                padding: 20px;
+                border-radius: 18px;
+                margin-bottom: 20px;
+            }
+
+            .bg-icon {
+                font-size: 18px;
+                opacity: 0.3;
+            }
+
+            footer {
+                margin-bottom: 15px;
+                font-size: 11px;
+            }
+        }
     </style>
 </head>
 <body>
