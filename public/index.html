@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareWithCare - P2P File Sharing</title>
+    <title>ShareWithCare - Secure File Sharing</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -21,7 +21,7 @@
             padding: 30px;
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            width: 400px;
+            width: 420px;
             text-align: center;
         }
         input, button {
@@ -31,6 +31,7 @@
             border-radius: 8px;
             border: none;
             font-size: 16px;
+            box-sizing: border-box;
         }
         button {
             background: #3b82f6;
@@ -92,190 +93,84 @@
 
         <p id="status">Select a file or enter code to start</p>
         <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
-        <a id="download-link" style="display:none; margin-top:15px; display:block; color:#38bdf8;">Download Received File</a>
+        <a id="download-link" style="display:none; margin-top:15px; display:block; color:#38bdf8; text-decoration:none; font-weight:bold;">Download Received File</a>
     </div>
 
     <script>
         const socket = io();
-        let pc;
-        let dataChannel;
         let currentRoom = '';
-        let fileToSend = null;
-
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun.services.mozilla.com' }
-            ]
-        };
 
         function generateCode() {
             return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
-        // --- SENDER LOGIC ---
+        // --- SENDER: File Select Handler ---
         document.getElementById('file-input').addEventListener('change', (e) => {
-            fileToSend = e.target.files[0];
-            if (!fileToSend) return;
+            const file = e.target.files[0];
+            if (!file) return;
 
             currentRoom = generateCode();
             document.getElementById('room-code-display').innerText = currentRoom;
             document.getElementById('code-container').style.display = 'block';
-            document.getElementById('status').innerText = 'Waiting for receiver authentication...';
+            document.getElementById('status').innerText = 'Reading file and uploading...';
 
-            socket.emit('create-room', currentRoom);
-
-            pc = new RTCPeerConnection(rtcConfig);
-            dataChannel = pc.createDataChannel('file-transfer');
-            setupDataChannel();
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    socket.emit('ice-candidate', { room: currentRoom, candidate: event.candidate });
-                }
-            };
-
-            pc.createOffer().then(offer => {
-                pc.setLocalDescription(offer);
-                socket.emit('offer', { room: currentRoom, offer });
-            });
-        });
-
-        socket.on('receiver-joined', async () => {
-            document.getElementById('status').innerText = 'Receiver connected! Establishing P2P tunnel...';
-        });
-
-        socket.on('answer', async (answer) => {
-            await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        });
-
-        socket.on('ice-candidate', async (candidate) => {
-            if (pc) {
-                await pc.addIceCandidate(new RTCIceCandidate(candidate));
-            }
-        });
-
-        function setupDataChannel() {
-            dataChannel.onopen = () => {
-                document.getElementById('status').innerText = 'Encrypted P2P Tunnel Active! Sending file...';
-                sendFile();
-            };
-            dataChannel.onclose = () => {
-                document.getElementById('status').innerText = 'Connection closed.';
-            };
-        }
-
-        function sendFile() {
-            const CHUNK_SIZE = 16384;
             const reader = new FileReader();
-            let offset = 0;
+            reader.onload = function(evt) {
+                const fileData = {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    buffer: evt.target.result
+                };
 
-            dataChannel.send(JSON.stringify({
-                name: fileToSend.name,
-                size: fileToSend.size,
-                type: fileToSend.type
-            }));
-
-            const progressBar = document.getElementById('progress-bar');
-            progressBar.style.display = 'block';
-
-            reader.onload = (e) => {
-                dataChannel.send(e.target.result);
-                offset += e.target.result.byteLength;
-                progressBar.value = (offset / fileToSend.size) * 100;
-
-                if (offset < fileToSend.size) {
-                    readNextChunk();
-                } else {
-                    document.getElementById('status').innerText = 'File Transfer Complete! 🎉';
-                }
+                // Create room and send file data to server room
+                socket.emit('host-file', { room: currentRoom, fileData });
+                document.getElementById('status').innerText = 'Waiting for receiver to enter code...';
             };
+            reader.readAsArrayBuffer(file);
+        });
 
-            function readNextChunk() {
-                const slice = fileToSend.slice(offset, offset + CHUNK_SIZE);
-                reader.readAsArrayBuffer(slice);
-            }
+        // Listen when receiver connects
+        socket.on('receiver-connected', () => {
+            document.getElementById('status').innerText = 'Receiver connected! Transferring file... 🎉';
+            document.getElementById('progress-bar').style.display = 'block';
+            document.getElementById('progress-bar').value = 100;
+        });
 
-            readNextChunk();
-        }
-
-        // --- RECEIVER LOGIC ---
-        document.getElementById('connect-btn').addEventListener('click', async (e) => {
-            e.preventDefault(); // Prevents page reload
-
+        // --- RECEIVER: Connect Button Handler ---
+        document.getElementById('connect-btn').addEventListener('click', (e) => {
+            e.preventDefault();
             currentRoom = document.getElementById('room-code-input').value.trim();
+            
             if (!currentRoom) {
                 alert('Please enter a valid code');
                 return;
             }
 
-            document.getElementById('status').innerText = 'Connecting to sender...';
-            socket.emit('join-room', currentRoom);
-
-            pc = new RTCPeerConnection(rtcConfig);
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    socket.emit('ice-candidate', { room: currentRoom, candidate: event.candidate });
-                }
-            };
-
-            pc.ondatachannel = (event) => {
-                dataChannel = event.channel;
-                setupReceiverDataChannel();
-            };
-
-            socket.on('offer', async (offer) => {
-                await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                socket.emit('answer', { room: currentRoom, answer });
-            });
-
-            socket.on('ice-candidate', async (candidate) => {
-                if (pc) {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                }
-            });
+            document.getElementById('status').innerText = 'Requesting file from server...';
+            
+            // Request file using code
+            socket.emit('get-file', currentRoom);
         });
 
-        let incomingFile = { metadata: null, receivedSize: 0, buffer: [] };
+        // Receive file data from server
+        socket.on('file-data', (fileData) => {
+            document.getElementById('status').innerText = 'File received successfully! Click below to save. 🎉';
+            
+            const blob = new Blob([fileData.buffer], { type: fileData.type });
+            const url = URL.createObjectURL(blob);
+            
+            const downloadLink = document.getElementById('download-link');
+            downloadLink.href = url;
+            downloadLink.download = fileData.name;
+            downloadLink.innerText = `Download: ${fileData.name}`;
+            downloadLink.style.display = 'block';
+        });
 
-        function setupReceiverDataChannel() {
-            dataChannel.onopen = () => {
-                document.getElementById('status').innerText = 'Encrypted P2P Tunnel Active! Receiving file...';
-            };
-
-            dataChannel.onmessage = (event) => {
-                const progressBar = document.getElementById('progress-bar');
-                progressBar.style.display = 'block';
-
-                if (typeof event.data === 'string') {
-                    incomingFile.metadata = JSON.parse(event.data);
-                    incomingFile.receivedSize = 0;
-                    incomingFile.buffer = [];
-                } else {
-                    incomingFile.buffer.push(event.data);
-                    incomingFile.receivedSize += event.data.byteLength;
-
-                    progressBar.value = (incomingFile.receivedSize / incomingFile.metadata.size) * 100;
-
-                    if (incomingFile.receivedSize === incomingFile.metadata.size) {
-                        const blob = new Blob(incomingFile.buffer, { type: incomingFile.metadata.type });
-                        const url = URL.createObjectURL(blob);
-                        
-                        const downloadLink = document.getElementById('download-link');
-                        downloadLink.href = url;
-                        downloadLink.download = incomingFile.metadata.name;
-                        downloadLink.innerText = `Download: ${incomingFile.metadata.name}`;
-                        downloadLink.style.display = 'block';
-
-                        document.getElementById('status').innerText = 'File Received Successfully! Click to download. 🎉';
-                    }
-                }
-            };
-        }
+        socket.on('error-msg', (msg) => {
+            alert(msg);
+            document.getElementById('status').innerText = msg;
+        });
     </script>
 </body>
 </html>

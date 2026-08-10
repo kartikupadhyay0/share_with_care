@@ -5,34 +5,34 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    maxHttpBufferSize: 50 * 1024 * 1024 // Allow up to 50MB file transfer through socket
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+const rooms = {}; // Store room files temporarily in memory
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.on('create-room', (roomCode) => {
-        socket.join(roomCode);
-        console.log(`Room created: ${roomCode}`);
+    // Host stores the file in memory against room code
+    socket.on('host-file', ({ room, fileData }) => {
+        socket.join(room);
+        rooms[room] = fileData;
+        console.log(`File hosted in room: ${room}`);
     });
 
-    socket.on('join-room', (roomCode) => {
-        socket.join(roomCode);
-        console.log(`User joined room: ${roomCode}`);
-        socket.to(roomCode).emit('receiver-joined', socket.id);
-    });
-
-    socket.on('offer', (data) => {
-        socket.to(data.room).emit('offer', data.offer);
-    });
-
-    socket.on('answer', (data) => {
-        socket.to(data.room).emit('answer', data.answer);
-    });
-
-    socket.on('ice-candidate', (data) => {
-        socket.to(data.room).emit('ice-candidate', data.candidate);
+    // Receiver requests file using room code
+    socket.on('get-file', (room) => {
+        if (rooms[room]) {
+            socket.join(room);
+            socket.emit('file-data', rooms[room]);
+            socket.to(room).emit('receiver-connected');
+            console.log(`File sent to receiver for room: ${room}`);
+        } else {
+            socket.emit('error-msg', 'Invalid or expired code!');
+        }
     });
 
     socket.on('disconnect', () => {
