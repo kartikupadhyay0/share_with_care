@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareWithCare - Secure File Sharing</title>
+    <title>ShareWithCare - Next-Gen Liquid Glass Encrypted P2P Transfer</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * {
@@ -13,126 +13,204 @@
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            background: #090d16;
+            background: radial-gradient(circle at center, #131c31 0%, #090d16 100%);
             color: #f8fafc;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
             height: 100vh;
+            overflow: hidden;
+            position: relative;
         }
-        .card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 35px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-            width: 420px;
+
+        /* Floating background icons effect */
+        .bg-icon {
+            position: absolute;
+            opacity: 0.6;
+            filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.3));
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Top Header */
+        .header-container {
             text-align: center;
+            margin-top: 40px;
+            z-index: 10;
         }
-        h2 {
-            font-size: 26px;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 25px;
-            letter-spacing: 0.5px;
+        h1 {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.4));
         }
-        p {
+        .subtitle {
             font-size: 14px;
             color: #94a3b8;
+            letter-spacing: 0.5px;
         }
+
+        /* Main Glass Card */
+        .card {
+            background: rgba(19, 27, 46, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+            width: 440px;
+            text-align: center;
+            z-index: 10;
+            margin-bottom: 20px;
+        }
+
+        /* Mode Switch Tabs */
+        .mode-tabs {
+            display: flex;
+            background: #090d16;
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: transparent;
+            color: #94a3b8;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+        }
+
+        /* Form Sections */
+        .section-content {
+            display: none;
+        }
+        .section-content.active {
+            display: block;
+        }
+
         input[type="file"] {
             display: none;
         }
-        .file-upload-btn {
+        .file-upload-box {
             display: block;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-            padding: 14px;
-            border-radius: 12px;
-            font-weight: 600;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px dashed rgba(56, 189, 248, 0.3);
+            padding: 24px;
+            border-radius: 14px;
+            color: #cbd5e1;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
         }
-        .file-upload-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
+        .file-upload-box:hover {
+            border-color: #38bdf8;
+            background: rgba(15, 23, 42, 1);
         }
+
         input[type="text"] {
             width: 100%;
-            background: #0f172a;
+            background: #090d16;
             color: #38bdf8;
             text-align: center;
             letter-spacing: 4px;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
             padding: 14px;
             border-radius: 12px;
-            border: 1px solid #334155;
+            border: 1px solid #1e293b;
             outline: none;
-            margin-top: 10px;
-            transition: border-color 0.3s;
+            margin-bottom: 12px;
         }
         input[type="text"]:focus {
-            border-color: #3b82f6;
+            border-color: #38bdf8;
         }
-        button {
+
+        .action-btn {
             width: 100%;
             padding: 14px;
-            margin-top: 12px;
             border-radius: 12px;
             border: none;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
         }
-        button:hover {
+        .action-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
         }
+
         .code-display {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: 800;
             color: #38bdf8;
             margin: 15px 0;
             letter-spacing: 6px;
-            background: rgba(15, 23, 42, 0.6);
+            background: #090d16;
             padding: 12px;
             border-radius: 12px;
-            border: 1px dashed #334155;
+            border: 1px solid #1e293b;
         }
+
+        .features-text {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 18px;
+            letter-spacing: 0.3px;
+        }
+
         #status {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #cbd5e1;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #94a3b8;
         }
+        
         progress {
             width: 100%;
-            height: 10px;
-            border-radius: 5px;
+            height: 8px;
+            border-radius: 4px;
             margin-top: 15px;
             overflow: hidden;
             appearance: none;
         }
         progress::-webkit-progress-bar {
-            background-color: #0f172a;
-            border-radius: 5px;
+            background-color: #090d16;
+            border-radius: 4px;
         }
         progress::-webkit-progress-value {
-            background-color: #3b82f6;
-            border-radius: 5px;
+            background-color: #38bdf8;
+            border-radius: 4px;
         }
+
         #download-link {
             display: inline-block;
             margin-top: 15px;
             padding: 12px 20px;
             background: #38bdf8;
-            color: #0f172a;
+            color: #090d16;
             font-weight: bold;
             border-radius: 10px;
             text-decoration: none;
@@ -141,55 +219,96 @@
         #download-link:hover {
             background: #7dd3fc;
         }
-        hr {
-            border: none;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin: 25px 0;
+
+        /* Footer */
+        footer {
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            z-index: 10;
         }
-        .file-name-text {
-            margin-top: 10px;
-            font-size: 13px;
+        footer span {
             color: #38bdf8;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
 
+    <!-- Decorative Floating Icons -->
+    <div class="bg-icon" style="top: 15%; left: 10%;">📁</div>
+    <div class="bg-icon" style="top: 30%; left: 6%;">📄</div>
+    <div class="bg-icon" style="bottom: 25%; left: 14%;">🖼️</div>
+    <div class="bg-icon" style="top: 20%; right: 10%;">🎬</div>
+    <div class="bg-icon" style="top: 50%; right: 8%;">📸</div>
+    <div class="bg-icon" style="bottom: 30%; right: 15%;">⚡</div>
+
+    <!-- Header -->
+    <div class="header-container">
+        <h1>ShareWithCare</h1>
+        <div class="subtitle">Next-Gen Liquid Glass Encrypted P2P Transfer</div>
+    </div>
+
+    <!-- Main Card -->
     <div class="card">
-        <h2>ShareWithCare</h2>
-        
-        <!-- Sender Section -->
-        <div id="sender-section">
-            <label for="file-input" class="file-upload-btn" id="upload-label">Choose File</label>
+        <div class="mode-tabs">
+            <button class="tab-btn active" id="send-tab-btn" onclick="switchTab('send')">Send File</button>
+            <button class="tab-btn" id="receive-tab-btn" onclick="switchTab('receive')">Receive</button>
+        </div>
+
+        <!-- Send Section -->
+        <div id="send-section" class="section-content active">
+            <label for="file-input" class="file-upload-box" id="upload-label">
+                📂 Click to Choose File
+            </label>
             <input type="file" id="file-input">
-            <div id="file-name-display" class="file-name-text"></div>
             
             <div id="code-container" style="display:none;">
-                <p style="margin-top: 15px;">Your Secure Access Code:</p>
                 <div class="code-display" id="room-code-display">------</div>
             </div>
         </div>
 
-        <hr>
-
-        <!-- Receiver Section -->
-        <div id="receiver-section">
-            <p>Have a secure code?</p>
+        <!-- Receive Section -->
+        <div id="receive-section" class="section-content">
             <input type="text" id="room-code-input" placeholder="ENTER CODE" maxlength="6">
-            <button id="connect-btn">Connect & Download</button>
+            <button class="action-btn" id="connect-btn">Connect & Download</button>
         </div>
 
         <p id="status">Select a file or enter code to start</p>
         <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
         <a id="download-link" style="display:none;">Download Received File</a>
+
+        <div class="features-text">Zero Server Storage • Direct P2P Stream • Infinite Capacity</div>
     </div>
+
+    <!-- Footer -->
+    <footer>
+        Built by <span>Kartik Upadhyay</span><br>© 2026 Kartik Upadhyay. All Rights Reserved.
+    </footer>
 
     <script>
         const socket = io();
         let currentRoom = '';
+
+        function switchTab(mode) {
+            const sendTab = document.getElementById('send-tab-btn');
+            const receiveTab = document.getElementById('receive-tab-btn');
+            const sendSec = document.getElementById('send-section');
+            const receiveSec = document.getElementById('receive-section');
+
+            if (mode === 'send') {
+                sendTab.classList.add('active');
+                receiveTab.classList.remove('active');
+                sendSec.classList.add('active');
+                receiveSec.classList.remove('active');
+            } else {
+                receiveTab.classList.add('active');
+                sendTab.classList.remove('active');
+                receiveSec.classList.add('active');
+                sendSec.classList.remove('active');
+            }
+        }
 
         function generateCode() {
             return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -199,8 +318,7 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('upload-label').innerText = 'File Selected ✓';
-            document.getElementById('file-name-display').innerText = file.name;
+            document.getElementById('upload-label').innerText = `✓ ${file.name}`;
 
             currentRoom = generateCode();
             document.getElementById('room-code-display').innerText = currentRoom;
