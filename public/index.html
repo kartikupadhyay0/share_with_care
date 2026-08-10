@@ -6,65 +6,153 @@
     <title>ShareWithCare - Secure File Sharing</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0f172a;
-            color: #ffffff;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: #f8fafc;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
         }
         .card {
-            background: #1e293b;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
             width: 420px;
             text-align: center;
         }
-        input, button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 10px;
-            border-radius: 8px;
-            border: none;
-            font-size: 16px;
-            box-sizing: border-box;
+        h2 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 25px;
+            letter-spacing: 0.5px;
         }
-        button {
-            background: #3b82f6;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        button:hover { background: #2563eb; }
-        input[type="text"] {
-            background: #0f172a;
-            color: white;
-            text-align: center;
-            letter-spacing: 2px;
-            font-size: 20px;
-            border: 1px solid #334155;
-        }
-        .code-display {
-            font-size: 32px;
-            font-weight: bold;
-            color: #38bdf8;
-            margin: 15px 0;
-            letter-spacing: 4px;
-        }
-        #status {
-            margin-top: 15px;
+        p {
             font-size: 14px;
             color: #94a3b8;
         }
+        input[type="file"] {
+            display: none;
+        }
+        .file-upload-btn {
+            display: block;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        .file-upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
+        }
+        input[type="text"] {
+            width: 100%;
+            background: #0f172a;
+            color: #38bdf8;
+            text-align: center;
+            letter-spacing: 4px;
+            font-size: 22px;
+            font-weight: bold;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            outline: none;
+            margin-top: 10px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #3b82f6;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 12px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
+        }
+        .code-display {
+            font-size: 36px;
+            font-weight: 800;
+            color: #38bdf8;
+            margin: 15px 0;
+            letter-spacing: 6px;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px dashed #334155;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
         progress {
             width: 100%;
-            height: 20px;
+            height: 10px;
+            border-radius: 5px;
             margin-top: 15px;
+            overflow: hidden;
+            appearance: none;
+        }
+        progress::-webkit-progress-bar {
+            background-color: #0f172a;
+            border-radius: 5px;
+        }
+        progress::-webkit-progress-value {
+            background-color: #3b82f6;
+            border-radius: 5px;
+        }
+        #download-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #38bdf8;
+            color: #0f172a;
+            font-weight: bold;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        #download-link:hover {
+            background: #7dd3fc;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 25px 0;
+        }
+        .file-name-text {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #38bdf8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     </style>
 </head>
@@ -75,25 +163,28 @@
         
         <!-- Sender Section -->
         <div id="sender-section">
+            <label for="file-input" class="file-upload-btn" id="upload-label">Choose File</label>
             <input type="file" id="file-input">
+            <div id="file-name-display" class="file-name-text"></div>
+            
             <div id="code-container" style="display:none;">
-                <p>Your Secure Access Code:</p>
+                <p style="margin-top: 15px;">Your Secure Access Code:</p>
                 <div class="code-display" id="room-code-display">------</div>
             </div>
         </div>
 
-        <hr style="border-color: #334155; margin: 20px 0;">
+        <hr>
 
         <!-- Receiver Section -->
         <div id="receiver-section">
-            <p>Have a code?</p>
-            <input type="text" id="room-code-input" placeholder="Enter Code" maxlength="6">
+            <p>Have a secure code?</p>
+            <input type="text" id="room-code-input" placeholder="ENTER CODE" maxlength="6">
             <button id="connect-btn">Connect & Download</button>
         </div>
 
         <p id="status">Select a file or enter code to start</p>
         <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
-        <a id="download-link" style="display:none; margin-top:15px; display:block; color:#38bdf8; text-decoration:none; font-weight:bold;">Download Received File</a>
+        <a id="download-link" style="display:none;">Download Received File</a>
     </div>
 
     <script>
@@ -104,15 +195,17 @@
             return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
-        // --- SENDER: File Select Handler ---
         document.getElementById('file-input').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
+            document.getElementById('upload-label').innerText = 'File Selected ✓';
+            document.getElementById('file-name-display').innerText = file.name;
+
             currentRoom = generateCode();
             document.getElementById('room-code-display').innerText = currentRoom;
             document.getElementById('code-container').style.display = 'block';
-            document.getElementById('status').innerText = 'Reading file and uploading...';
+            document.getElementById('status').innerText = 'Processing file for secure share...';
 
             const reader = new FileReader();
             reader.onload = function(evt) {
@@ -123,21 +216,19 @@
                     buffer: evt.target.result
                 };
 
-                // Create room and send file data to server room
                 socket.emit('host-file', { room: currentRoom, fileData });
                 document.getElementById('status').innerText = 'Waiting for receiver to enter code...';
             };
             reader.readAsArrayBuffer(file);
         });
 
-        // Listen when receiver connects
         socket.on('receiver-connected', () => {
-            document.getElementById('status').innerText = 'Receiver connected! Transferring file... 🎉';
-            document.getElementById('progress-bar').style.display = 'block';
-            document.getElementById('progress-bar').value = 100;
+            document.getElementById('status').innerText = 'Receiver connected! Transfer complete! 🎉';
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.display = 'block';
+            progressBar.value = 100;
         });
 
-        // --- RECEIVER: Connect Button Handler ---
         document.getElementById('connect-btn').addEventListener('click', (e) => {
             e.preventDefault();
             currentRoom = document.getElementById('room-code-input').value.trim();
@@ -147,15 +238,12 @@
                 return;
             }
 
-            document.getElementById('status').innerText = 'Requesting file from server...';
-            
-            // Request file using code
+            document.getElementById('status').innerText = 'Connecting to secure stream...';
             socket.emit('get-file', currentRoom);
         });
 
-        // Receive file data from server
         socket.on('file-data', (fileData) => {
-            document.getElementById('status').innerText = 'File received successfully! Click below to save. 🎉';
+            document.getElementById('status').innerText = 'File received successfully! Click to download. 🎉';
             
             const blob = new Blob([fileData.buffer], { type: fileData.type });
             const url = URL.createObjectURL(blob);
@@ -164,7 +252,11 @@
             downloadLink.href = url;
             downloadLink.download = fileData.name;
             downloadLink.innerText = `Download: ${fileData.name}`;
-            downloadLink.style.display = 'block';
+            downloadLink.style.display = 'inline-block';
+            
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.display = 'block';
+            progressBar.value = 100;
         });
 
         socket.on('error-msg', (msg) => {

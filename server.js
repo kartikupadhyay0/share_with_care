@@ -6,24 +6,22 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 50 * 1024 * 1024 // Allow up to 50MB file transfer through socket
+    maxHttpBufferSize: 50 * 1024 * 1024
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const rooms = {}; // Store room files temporarily in memory
+const rooms = {};
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    // Host stores the file in memory against room code
     socket.on('host-file', ({ room, fileData }) => {
         socket.join(room);
         rooms[room] = fileData;
         console.log(`File hosted in room: ${room}`);
     });
 
-    // Receiver requests file using room code
     socket.on('get-file', (room) => {
         if (rooms[room]) {
             socket.join(room);
