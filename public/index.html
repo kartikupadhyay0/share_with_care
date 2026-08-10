@@ -13,64 +13,179 @@
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #090d16 0%, #1a103c 35%, #0f172a 70%, #061e29 100%);
+            background: linear-gradient(135deg, #070913 0%, #120d26 40%, #090d16 100%);
             color: #f8fafc;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow-x: hidden;
             position: relative;
         }
 
-        /* Floating background icons effect (Medium Size) */
-        .bg-icon {
+        /* Ambient Glow & Floating Aesthetic Elements */
+        .glow-sphere {
             position: absolute;
-            font-size: 24px;
-            opacity: 0.6;
-            filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.3));
-            animation: float 6s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(56, 189, 248, 0.05) 50%, transparent 70%);
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+            pointer-events: none;
+            filter: blur(40px);
         }
 
-        /* Top Header */
-        .header-container {
-            text-align: center;
-            margin-top: 30px;
+        .floating-element {
+            position: absolute;
+            opacity: 0.5;
+            animation: float 6s ease-in-out infinite;
+            z-index: 2;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-12px) rotate(5deg); }
+        }
+
+        /* Top Navbar Style */
+        .navbar {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px 30px;
             z-index: 10;
         }
-        h1 {
-            font-size: 42px;
+        .brand-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #7c3aed 0%, #38bdf8 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+        }
+        .brand-name {
+            font-size: 20px;
             font-weight: 800;
-            background: linear-gradient(135deg, #ffffff 0%, #38bdf8 50%, #c084fc 100%);
+            letter-spacing: 0.5px;
+            color: #ffffff;
+        }
+        .brand-badge {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            letter-spacing: 1px;
+            margin-left: -6px;
+        }
+        .crafted-text {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+        .crafted-text span {
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        /* Main Content Container */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            z-index: 10;
+            padding: 10px 20px 40px 20px;
+        }
+
+        /* Header / Headline Area */
+        .header-container {
+            text-align: center;
+            margin-bottom: 25px;
+            max-width: 700px;
+        }
+        .tagline-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(124, 58, 237, 0.15);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: #c084fc;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 15px;
+        }
+        h1 {
+            font-size: 46px;
+            font-weight: 800;
+            line-height: 1.15;
+            background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-            filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.4));
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
         }
         .subtitle {
             font-size: 14px;
             color: #94a3b8;
-            letter-spacing: 0.5px;
+            line-height: 1.5;
+            max-width: 500px;
+            margin: 0 auto;
         }
 
         /* Main Glass Card */
         .card {
-            background: rgba(19, 27, 46, 0.65);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 30px;
             border-radius: 24px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             width: 440px;
             text-align: center;
-            z-index: 10;
+            margin-top: 10px;
         }
 
         /* Mode Switch Tabs */
@@ -95,9 +210,9 @@
             color: #94a3b8;
         }
         .tab-btn.active {
-            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+            background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
             color: white;
-            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
         }
 
         /* Form Sections */
@@ -113,8 +228,8 @@
         }
         .file-upload-box {
             display: block;
-            background: rgba(15, 23, 42, 0.8);
-            border: 2px dashed rgba(56, 189, 248, 0.3);
+            background: rgba(15, 23, 42, 0.9);
+            border: 2px dashed rgba(124, 58, 237, 0.4);
             padding: 24px;
             border-radius: 14px;
             color: #cbd5e1;
@@ -124,6 +239,7 @@
         .file-upload-box:hover {
             border-color: #38bdf8;
             background: rgba(15, 23, 42, 1);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
         }
 
         input[type="text"] {
@@ -141,7 +257,8 @@
             margin-bottom: 12px;
         }
         input[type="text"]:focus {
-            border-color: #38bdf8;
+            border-color: #7c3aed;
+            box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
         }
 
         .action-btn {
@@ -151,15 +268,15 @@
             border: none;
             font-size: 15px;
             font-weight: 600;
-            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+            background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
         }
         .action-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
         }
 
         .code-display {
@@ -200,7 +317,7 @@
             border-radius: 4px;
         }
         progress::-webkit-progress-value {
-            background-color: #38bdf8;
+            background: linear-gradient(90deg, #7c3aed, #38bdf8);
             border-radius: 4px;
         }
 
@@ -208,24 +325,31 @@
             display: inline-block;
             margin-top: 15px;
             padding: 12px 20px;
-            background: #38bdf8;
-            color: #090d16;
+            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+            color: #fff;
             font-weight: bold;
             border-radius: 10px;
             text-decoration: none;
-            transition: background 0.3s;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
         }
         #download-link:hover {
-            background: #7dd3fc;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
         }
 
         /* Footer styling */
         footer {
-            margin-bottom: 25px;
-            text-align: center;
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
             font-size: 12px;
             color: #64748b;
             z-index: 10;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
         }
         footer span.author {
             color: #38bdf8;
@@ -237,100 +361,103 @@
         }
 
         /* Mobile Responsive Adjustments */
-        @media (max-width: 480px) {
-            body {
-                height: auto;
-                min-height: 100vh;
-                overflow-y: auto;
-                padding: 15px;
-                justify-content: flex-start;
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 20px;
             }
-
-            .header-container {
-                margin-top: 20px;
-                margin-bottom: 15px;
-            }
-
             h1 {
-                font-size: 28px;
+                font-size: 32px;
             }
-
-            .subtitle {
-                font-size: 12px;
-                padding: 0 10px;
-            }
-
             .card {
                 width: 100% !important;
                 max-width: 100%;
                 padding: 20px;
-                border-radius: 18px;
-                margin-bottom: 20px;
             }
-
-            .bg-icon {
-                font-size: 18px;
-                opacity: 0.3;
-            }
-
             footer {
-                margin-bottom: 15px;
-                font-size: 11px;
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+                padding: 20px;
+            }
+            .floating-element {
+                display: none;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- Decorative Floating Icons (Medium Size) -->
-    <div class="bg-icon" style="top: 15%; left: 10%;">📁</div>
-    <div class="bg-icon" style="top: 30%; left: 6%;">📄</div>
-    <div class="bg-icon" style="bottom: 25%; left: 14%;">🖼️</div>
-    <div class="bg-icon" style="top: 20%; right: 10%;">🎬</div>
-    <div class="bg-icon" style="top: 50%; right: 8%;">📸</div>
-    <div class="bg-icon" style="bottom: 30%; right: 15%;">⚡</div>
+    <!-- Ambient Glow & Floating Aesthetic Icons -->
+    <div class="glow-sphere"></div>
+    <div class="floating-element" style="top: 18%; left: 8%; font-size: 22px;">📁</div>
+    <div class="floating-element" style="top: 35%; left: 5%; font-size: 20px;">✨</div>
+    <div class="floating-element" style="top: 22%; right: 8%; font-size: 22px;">⚡</div>
+    <div class="floating-element" style="top: 45%; right: 6%; font-size: 20px;">🎨</div>
 
-    <!-- Header -->
-    <div class="header-container">
-        <h1>ShareWithCare</h1>
-        <div class="subtitle">Next-Gen Liquid Glass Encrypted P2P Transfer</div>
-    </div>
-
-    <!-- Main Card -->
-    <div class="card">
-        <div class="mode-tabs">
-            <button class="tab-btn active" id="send-tab-btn" onclick="switchTab('send')">Send File</button>
-            <button class="tab-btn" id="receive-tab-btn" onclick="switchTab('receive')">Receive</button>
-        </div>
-
-        <!-- Send Section -->
-        <div id="send-section" class="section-content active">
-            <label for="file-input" class="file-upload-box" id="upload-label">
-                📂 Click to Choose File
-            </label>
-            <input type="file" id="file-input">
-            
-            <div id="code-container" style="display:none;">
-                <div class="code-display" id="room-code-display">------</div>
+    <!-- Top Navbar (DesignStudio Style) -->
+    <nav class="navbar">
+        <div class="brand-box">
+            <div class="logo-icon">✨</div>
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="brand-name">ShareWithCare</span>
+                    <span class="brand-badge">PRO</span>
+                </div>
+                <div class="crafted-text">Crafted by <span>Kartik Upadhyay</span></div>
             </div>
         </div>
+        <div class="nav-right">
+            <button class="nav-btn">☀️ Light</button>
+            <button class="nav-btn">Sign In</button>
+        </div>
+    </nav>
 
-        <!-- Receive Section -->
-        <div id="receive-section" class="section-content">
-            <input type="text" id="room-code-input" placeholder="ENTER CODE" maxlength="6">
-            <button class="action-btn" id="connect-btn">Connect & Download</button>
+    <!-- Main Section Container -->
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header-container">
+            <div class="tagline-pill">✨ THE FUTURE OF SECURE SHARING</div>
+            <h1>Make file transfers impossible to ignore.</h1>
+            <div class="subtitle">Securely host and share files instantly using direct peer encryption inside one beautifully fast workspace.</div>
         </div>
 
-        <p id="status">Select a file or enter code to start</p>
-        <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
-        <a id="download-link" style="display:none;">Download Received File</a>
+        <!-- Main Card -->
+        <div class="card">
+            <div class="mode-tabs">
+                <button class="tab-btn active" id="send-tab-btn" onclick="switchTab('send')">Send File</button>
+                <button class="tab-btn" id="receive-tab-btn" onclick="switchTab('receive')">Receive</button>
+            </div>
 
-        <div class="features-text">Zero Server Storage • Direct P2P Stream • Infinite Capacity</div>
+            <!-- Send Section -->
+            <div id="send-section" class="section-content active">
+                <label for="file-input" class="file-upload-box" id="upload-label">
+                    📂 Click to Choose File
+                </label>
+                <input type="file" id="file-input">
+                
+                <div id="code-container" style="display:none;">
+                    <div class="code-display" id="room-code-display">------</div>
+                </div>
+            </div>
+
+            <!-- Receive Section -->
+            <div id="receive-section" class="section-content">
+                <input type="text" id="room-code-input" placeholder="ENTER CODE" maxlength="6">
+                <button class="action-btn" id="connect-btn">Connect & Download</button>
+            </div>
+
+            <p id="status">Select a file or enter code to start</p>
+            <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
+            <a id="download-link" style="display:none;">Download Received File</a>
+
+            <div class="features-text">Zero Server Storage • Direct Stream • Infinite Capacity</div>
+        </div>
     </div>
 
     <!-- Footer -->
     <footer>
-        Built by <span class="author">Kartik Upadhyay</span><br>© 2026 <span class="brand">ShareWithCare</span>. All Rights Reserved.
+        <div>© 2026 <span class="brand">ShareWithCare</span>. All Rights Reserved.</div>
+        <div>Designed & Built by <span class="author">Kartik Upadhyay</span> ✨</div>
     </footer>
 
     <script>
