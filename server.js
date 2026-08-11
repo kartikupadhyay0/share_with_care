@@ -5,74 +5,36 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8, // 100 MB Limit
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    maxHttpBufferSize: 50 * 1024 * 1024
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Store room metadata only (DO NOT store heavy binary buffer in server memory to avoid freezing)
-const roomsMap = new Map();
+const rooms = {};
 
 io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
 
-    // Register Sender
-    socket.on('register-sender', ({ room, fileName, fileType, fileSize, isLarge }) => {
-        const cleanRoom = room.trim().toUpperCase();
-        roomsMap.set(cleanRoom, {
-            senderSocketId: socket.id,
-            fileName,
-            fileType,
-            fileSize,
-            isLarge
-        });
-        socket.join(cleanRoom);
-        console.log(`[ROOM CREATED] ${cleanRoom} by Sender: ${socket.id}`);
+    socket.on('host-file', ({ room, fileData }) => {
+        socket.join(room);
+        rooms[room] = fileData;
+        console.log(`File hosted in room: ${room}`);
     });
 
-    // Receiver requests file
-    socket.on('request-file', ({ room }) => {
-        const cleanRoom = room.trim().toUpperCase();
-
-        if (roomsMap.has(cleanRoom)) {
-            const roomInfo = roomsMap.get(cleanRoom);
-            socket.join(cleanRoom);
-
-            console.log(`[REQUEST] File requested for Room: ${cleanRoom} by Receiver: ${socket.id}`);
-
-            // Notify Receiver about file metadata
-            socket.emit('file-metadata', {
-                fileName: roomInfo.fileName,
-                fileType: roomInfo.fileType,
-                fileSize: roomInfo.fileSize,
-                isLarge: roomInfo.isLarge
-            });
-
-            // Trigger Sender to start streaming chunks directly
-            io.to(roomInfo.senderSocketId).emit('start-sending-file', {
-                receiverSocketId: socket.id
-            });
+    socket.on('get-file', (room) => {
+        if (rooms[room]) {
+            socket.join(room);
+            socket.emit('file-data', rooms[room]);
+            socket.to(room).emit('receiver-connected');
+            console.log(`File sent to receiver for room: ${room}`);
         } else {
-            socket.emit('error-msg', 'Invalid Code or File Expired!');
+            socket.emit('error-msg', 'Invalid or expired code!');
         }
     });
 
-    // Chunk Transfer Relay
-    socket.on('send-file-chunk', ({ room, chunk }) => {
-        const cleanRoom = room.trim().toUpperCase();
-        socket.to(cleanRoom).emit('receive-file-chunk', { chunk });
-    });
-
-    // Handle Disconnection
     socket.on('disconnect', () => {
-        for (const [room, data] of roomsMap.entries()) {
-            if (data.senderSocketId === socket.id) {
-                roomsMap.delete(room);
-                console.log(`[ROOM DELETED] ${room} due to sender disconnect`);
-            }
-        }
+        console.log('User disconnected:', socket.id);
     });
 });
 
