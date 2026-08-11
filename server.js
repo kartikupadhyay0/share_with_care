@@ -5,13 +5,8 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-
-// High Payload Limits for Socket.io
 const io = new Server(server, {
-    maxHttpBufferSize: 1e9, // 1 GB Buffer Limit
-    pingTimeout: 60000,
-    pingInterval: 25000,
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    maxHttpBufferSize: 1e8 // 100 MB buffer
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -19,22 +14,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 const roomsMap = new Map();
 
 io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
 
-    // Sender Registers Room
-    socket.on('register-sender', ({ room, fileName, fileSize, fileType }) => {
-        const cleanRoom = room.trim().toUpperCase();
+    socket.on('register-sender', (data) => {
+        const cleanRoom = data.room.trim().toUpperCase();
         roomsMap.set(cleanRoom, {
             senderSocketId: socket.id,
-            fileName,
-            fileSize,
-            fileType
+            ...data
         });
         socket.join(cleanRoom);
-        console.log(`[Room Created]: ${cleanRoom} for file ${fileName}`);
     });
 
-    // Receiver Connects & Requests File
     socket.on('request-file', ({ room }) => {
         const cleanRoom = room.trim().toUpperCase();
 
@@ -42,18 +31,29 @@ io.on('connection', (socket) => {
             const roomInfo = roomsMap.get(cleanRoom);
             socket.join(cleanRoom);
 
-            // Send metadata to receiver
-            socket.emit('file-metadata', roomInfo);
+            if (!roomInfo.isLarge) {
+                // Small File Mode -> Send Instantly!
+                socket.emit('receive-file-small', {
+                    fileName: roomInfo.fileName,
+                    fileData: roomInfo.fileData,
+                    fileType: roomInfo.fileType
+                });
+            } else {
+                // Large File Mode -> Start Stream & Handshake
+                socket.emit('file-metadata-large', {
+                    fileName: roomInfo.fileName,
+                    fileSize: roomInfo.fileSize,
+                    fileType: roomInfo.fileType
+                });
 
-            // Signal sender to start stream
-            io.to(roomInfo.senderSocketId).emit('start-sending-file');
-            console.log(`[Stream Started]: ${cleanRoom}`);
+                // Trigger Sender to stream
+                io.to(roomInfo.senderSocketId).emit('start-sending-file');
+            }
         } else {
-            socket.emit('error-msg', 'Invalid or expired room code!');
+            socket.emit('error-msg', 'Invalid Code or File Expired!');
         }
     });
 
-    // Fast Stream Relay
     socket.on('send-file-chunk', ({ room, chunk }) => {
         const cleanRoom = room.trim().toUpperCase();
         socket.to(cleanRoom).emit('receive-file-chunk', { chunk });
@@ -70,5 +70,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
