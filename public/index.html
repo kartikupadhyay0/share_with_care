@@ -81,13 +81,13 @@
             text-align: center;
         }
 
-        /* Screen App Install Button Style */
+        /* On-Screen App Install Button & Mobile Guide Banner */
         .install-pwa-btn {
-            display: none; /* Auto shows when browser is ready */
+            display: none;
             background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
             color: #ffffff;
             border: none;
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 20px;
             font-size: 13px;
             font-weight: 700;
@@ -100,6 +100,21 @@
         .install-pwa-btn:hover {
             transform: scale(1.05);
             box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6);
+        }
+
+        .mobile-install-banner {
+            display: none;
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #38bdf8;
+            text-align: center;
+            max-width: 90%;
+            z-index: 20;
+            backdrop-filter: blur(10px);
         }
 
         /* Main Content Container */
@@ -383,8 +398,11 @@
         </div>
     </nav>
 
-    <!-- On-Screen Install App Button -->
+    <!-- App Install Elements -->
     <button id="install-app-btn" class="install-pwa-btn">📲 Install ShareWithCare App</button>
+    <div id="mobile-install-banner" class="mobile-install-banner">
+        📱 App Download karne ke liye: Browser <strong>Menu (⋮)</strong> -> <strong>"Add to Home screen" / "Install App"</strong> par click karein.
+    </div>
 
     <!-- Main Section Container -->
     <div class="main-container">
@@ -444,15 +462,28 @@
             });
         }
 
-        // Direct Screen App Download Button Logic
+        // Install Button & Mobile Banner Logic
         let deferredPrompt;
         const installBtn = document.getElementById('install-app-btn');
+        const mobileBanner = document.getElementById('mobile-install-banner');
+
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            installBtn.style.display = 'inline-block'; // Shows button on screen
+            installBtn.style.display = 'inline-block';
+            if (mobileBanner) mobileBanner.style.display = 'none';
         });
+
+        // Show banner on mobile devices if native prompt isn't fired immediately
+        if (isMobile) {
+            setTimeout(() => {
+                if (!deferredPrompt && installBtn.style.display !== 'inline-block') {
+                    mobileBanner.style.display = 'block';
+                }
+            }, 1000);
+        }
 
         installBtn.addEventListener('click', () => {
             installBtn.style.display = 'none';
@@ -460,7 +491,7 @@
                 deferredPrompt.prompt();
                 deferredPrompt.userChoice.then((choiceResult) => {
                     if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the install prompt');
+                        console.log('User installed the PWA');
                     }
                     deferredPrompt = null;
                 });
