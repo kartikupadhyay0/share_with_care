@@ -145,7 +145,13 @@
 
     <script>
         const socket = io();
+        let selectedFile = null;
         let currentRoom = '';
+        let receivedChunks = [];
+        let receivedSize = 0;
+        let incomingFileInfo = null;
+
+        const CHUNK_SIZE = 64 * 1024; // 64 KB per chunk
 
         function switchTab(mode) {
             document.getElementById('send-tab-btn').classList.toggle('active', mode === 'send');
@@ -158,33 +164,26 @@
             return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
-        // Send File Logic
+        // Sender file selection
         document.getElementById('file-input').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+            selectedFile = e.target.files[0];
+            if (!selectedFile) return;
 
-            document.getElementById('upload-label').innerText = `✓ ${file.name}`;
+            document.getElementById('upload-label').innerText = `✓ ${selectedFile.name}`;
             currentRoom = generateCode();
             document.getElementById('room-code-display').innerText = currentRoom;
             document.getElementById('code-container').style.display = 'block';
-            document.getElementById('status').innerText = 'Preparing file for sharing...';
+            document.getElementById('status').innerText = 'Waiting for receiver to enter code...';
 
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                const fileData = {
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    buffer: evt.target.result
-                };
-
-                socket.emit('host-file', { room: currentRoom, fileData });
-                document.getElementById('status').innerText = 'Waiting for receiver to enter code...';
-            };
-            reader.readAsArrayBuffer(file);
+            socket.emit('register-sender', {
+                room: currentRoom,
+                fileName: selectedFile.name,
+                fileSize: selectedFile.size,
+                fileType: selectedFile.type
+            });
         });
 
-        // Receive Button Logic
+        // Receiver Connect Button
         document.getElementById('connect-btn').addEventListener('click', (e) => {
             e.preventDefault();
             const inputCode = document.getElementById('room-code-input').value.trim().toUpperCase();
@@ -194,33 +193,74 @@
                 return;
             }
 
+            currentRoom = inputCode;
             document.getElementById('status').innerText = 'Connecting to sender...';
-            socket.emit('get-file', inputCode);
+            socket.emit('request-file', { room: currentRoom });
         });
 
-        // On File Received
-        socket.on('file-data', (fileData) => {
-            document.getElementById('status').innerText = 'File received successfully! Click to download. 🎉';
-            
-            const blob = new Blob([fileData.buffer], { type: fileData.type });
-            const url = URL.createObjectURL(blob);
-            
-            const downloadLink = document.getElementById('download-link');
-            downloadLink.href = url;
-            downloadLink.download = fileData.name;
-            downloadLink.innerText = `Download: ${fileData.name}`;
-            downloadLink.style.display = 'inline-block';
-            
-            const progressBar = document.getElementById('progress-bar');
-            progressBar.style.display = 'block';
-            progressBar.value = 100;
+        // Sender receives start signal from receiver
+        socket.on('start-sending-file', () => {
+            document.getElementById('status').innerText = 'Streaming large file...';
+            document.getElementById('progress-bar').style.display = 'block';
+
+            let offset = 0;
+            const reader = new FileReader();
+
+            function readNextChunk() {
+                const slice = selectedFile.slice(offset, offset + CHUNK_SIZE);
+                reader.readAsArrayBuffer(slice);
+            }
+
+            reader.onload = (e) => {
+                socket.emit('send-file-chunk', {
+                    room: currentRoom,
+                    chunk: e.target.result,
+                    offset: offset
+                });
+
+                offset += e.target.result.byteLength;
+                const percent = Math.floor((offset / selectedFile.size) * 100);
+                document.getElementById('progress-bar').value = percent;
+
+                if (offset < selectedFile.size) {
+                    readNextChunk();
+                } else {
+                    document.getElementById('status').innerText = 'Transfer complete! 🎉';
+                }
+            };
+
+            readNextChunk();
         });
 
-        socket.on('receiver-connected', () => {
-            document.getElementById('status').innerText = 'Receiver connected! Transfer complete! 🎉';
-            const progressBar = document.getElementById('progress-bar');
-            progressBar.style.display = 'block';
-            progressBar.value = 100;
+        // Receiver initialized
+        socket.on('file-metadata', (info) => {
+            incomingFileInfo = info;
+            receivedChunks = [];
+            receivedSize = 0;
+            document.getElementById('status').innerText = `Receiving ${info.fileName}...`;
+            document.getElementById('progress-bar').style.display = 'block';
+        });
+
+        // Receiver receives chunk
+        socket.on('receive-file-chunk', (data) => {
+            receivedChunks.push(data.chunk);
+            receivedSize += data.chunk.byteLength;
+
+            const percent = Math.floor((receivedSize / incomingFileInfo.fileSize) * 100);
+            document.getElementById('progress-bar').value = percent;
+
+            if (receivedSize >= incomingFileInfo.fileSize) {
+                document.getElementById('status').innerText = 'File received successfully! Click to download. 🎉';
+                
+                const blob = new Blob(receivedChunks, { type: incomingFileInfo.fileType });
+                const url = URL.createObjectURL(blob);
+
+                const downloadLink = document.getElementById('download-link');
+                downloadLink.href = url;
+                downloadLink.download = incomingFileInfo.fileName;
+                downloadLink.innerText = `Download: ${incomingFileInfo.fileName}`;
+                downloadLink.style.display = 'inline-block';
+            }
         });
 
         socket.on('error-msg', (msg) => {

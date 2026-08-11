@@ -6,49 +6,60 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 1e9, // 1 GB Buffer Limit
+    maxHttpBufferSize: 1e8, // 100MB per frame limit
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Global Map to store active shared files per room
-const activeRooms = new Map();
+// Store room details (Without keeping full file in RAM)
+const roomsMap = new Map();
 
 io.on('connection', (socket) => {
 
-    // Host File Event
-    socket.on('host-file', ({ room, fileData }) => {
+    // Register Sender
+    socket.on('register-sender', ({ room, fileName, fileSize, fileType }) => {
         const cleanRoom = room.trim().toUpperCase();
-        activeRooms.set(cleanRoom, {
-            socketId: socket.id,
-            fileData: fileData
+        roomsMap.set(cleanRoom, {
+            senderSocketId: socket.id,
+            fileName,
+            fileSize,
+            fileType
         });
         socket.join(cleanRoom);
-        console.log(`[Host Success] File stored for Room: ${cleanRoom}`);
+        console.log(`[Registered Room]: ${cleanRoom} (${fileName})`);
     });
 
-    // Get File Event
-    socket.on('get-file', (room) => {
+    // Request File
+    socket.on('request-file', ({ room }) => {
         const cleanRoom = room.trim().toUpperCase();
-        console.log(`[Fetch Request] Searching for Room: ${cleanRoom}`);
 
-        if (activeRooms.has(cleanRoom)) {
-            const roomInfo = activeRooms.get(cleanRoom);
-            socket.emit('file-data', roomInfo.fileData);
-            io.to(roomInfo.socketId).emit('receiver-connected');
-            console.log(`[Success] File transferred for Room: ${cleanRoom}`);
+        if (roomsMap.has(cleanRoom)) {
+            const roomInfo = roomsMap.get(cleanRoom);
+            socket.join(cleanRoom);
+
+            // Send metadata to receiver
+            socket.emit('file-metadata', roomInfo);
+
+            // Ask sender to start streaming chunks
+            io.to(roomInfo.senderSocketId).emit('start-sending-file');
+            console.log(`[Stream Started]: Room ${cleanRoom}`);
         } else {
-            console.log(`[Error] Room not found: ${cleanRoom}`);
             socket.emit('error-msg', 'Invalid code or room expired!');
         }
     });
 
+    // Pipe Chunks Directly to Room (Memory Light Stream)
+    socket.on('send-file-chunk', ({ room, chunk, offset }) => {
+        const cleanRoom = room.trim().toUpperCase();
+        socket.to(cleanRoom).emit('receive-file-chunk', { chunk, offset });
+    });
+
+    // Handle Disconnection
     socket.on('disconnect', () => {
-        // Clean up rooms hosted by disconnected user
-        for (const [room, data] of activeRooms.entries()) {
-            if (data.socketId === socket.id) {
-                activeRooms.delete(room);
+        for (const [room, data] of roomsMap.entries()) {
+            if (data.senderSocketId === socket.id) {
+                roomsMap.delete(room);
             }
         }
     });
