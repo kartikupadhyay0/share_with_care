@@ -62,7 +62,7 @@
 
         input[type="text"] {
             width: 100%; background: #090d16; color: #38bdf8; text-align: center; letter-spacing: 4px; font-size: 20px; font-weight: bold;
-            padding: 14px; border-radius: 12px; border: 1px solid #1e293b; outline: none; margin-bottom: 12px;
+            padding: 14px; border-radius: 12px; border: 1px solid #1e293b; outline: none; margin-bottom: 12px; text-transform: uppercase;
         }
 
         .action-btn {
@@ -167,7 +167,7 @@
             currentRoom = generateCode();
             document.getElementById('room-code-display').innerText = currentRoom;
             document.getElementById('code-container').style.display = 'block';
-            document.getElementById('status').innerText = 'Processing file for secure share...';
+            document.getElementById('status').innerText = 'Preparing file for sharing...';
 
             const reader = new FileReader();
             reader.onload = function(evt) {
@@ -178,9 +178,7 @@
                     buffer: evt.target.result
                 };
 
-                // Emit host-file to server
                 socket.emit('host-file', { room: currentRoom, fileData });
-                socket.emit('host-file-p2p', { room: currentRoom });
                 document.getElementById('status').innerText = 'Waiting for receiver to enter code...';
             };
             reader.readAsArrayBuffer(file);
@@ -189,18 +187,18 @@
         // Receive Button Logic
         document.getElementById('connect-btn').addEventListener('click', (e) => {
             e.preventDefault();
-            currentRoom = document.getElementById('room-code-input').value.trim().toUpperCase();
+            const inputCode = document.getElementById('room-code-input').value.trim().toUpperCase();
             
-            if (!currentRoom) {
+            if (!inputCode) {
                 alert('Please enter a valid code');
                 return;
             }
 
             document.getElementById('status').innerText = 'Connecting to sender...';
-            socket.emit('get-file', currentRoom);
+            socket.emit('get-file', inputCode);
         });
 
-        // On Data Received
+        // On File Received
         socket.on('file-data', (fileData) => {
             document.getElementById('status').innerText = 'File received successfully! Click to download. 🎉';
             

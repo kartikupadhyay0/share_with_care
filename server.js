@@ -6,90 +6,55 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    maxHttpBufferSize: 1e9, // 1 GB Buffer Limit
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// Serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Socket.io Connection & Signaling Logic
+// Global Map to store active shared files per room
+const activeRooms = new Map();
+
 io.on('connection', (socket) => {
-    console.log(`[+] User Connected: ${socket.id}`);
 
-    // -------------------------------------------------------------
-    // 1. WebRTC P2P Direct Router / Internet Streaming Events
-    // -------------------------------------------------------------
-    
-    // Sender creates/hosts a room
-    socket.on('host-file-p2p', ({ room }) => {
-        socket.join(room);
-        console.log(`[Host] Room created for P2P: ${room} by ${socket.id}`);
-    });
-
-    // Receiver joins the room
-    socket.on('join-file-p2p', ({ room }) => {
-        socket.join(room);
-        console.log(`[Join] Receiver joined P2P room: ${room}`);
-        
-        // Notify sender that receiver is ready to establish WebRTC connection
-        socket.to(room).emit('receiver-joined');
-    });
-
-    // WebRTC Signaling Relay (Offers, Answers, ICE Candidates)
-    socket.on('signal', (data) => {
-        if (data && data.room) {
-            socket.to(data.room).emit('signal', data);
-        }
-    });
-
-    // -------------------------------------------------------------
-    // 2. Legacy Socket.io Buffer Transfer Events (Fallback)
-    // -------------------------------------------------------------
-    
+    // Host File Event
     socket.on('host-file', ({ room, fileData }) => {
-        socket.join(room);
-        socket.roomData = { room, fileData };
-        console.log(`[Legacy Host] File buffered in room: ${room}`);
+        const cleanRoom = room.trim().toUpperCase();
+        activeRooms.set(cleanRoom, {
+            socketId: socket.id,
+            fileData: fileData
+        });
+        socket.join(cleanRoom);
+        console.log(`[Host Success] File stored for Room: ${cleanRoom}`);
     });
 
+    // Get File Event
     socket.on('get-file', (room) => {
-        socket.join(room);
-        const roomSockets = io.sockets.adapter.rooms.get(room);
-        let fileSent = false;
+        const cleanRoom = room.trim().toUpperCase();
+        console.log(`[Fetch Request] Searching for Room: ${cleanRoom}`);
 
-        if (roomSockets) {
-            for (const id of roomSockets) {
-                const clientSocket = io.sockets.sockets.get(id);
-                if (clientSocket && clientSocket.roomData && clientSocket.roomData.fileData) {
-                    socket.emit('file-data', clientSocket.roomData.fileData);
-                    socket.to(room).emit('receiver-connected');
-                    fileSent = true;
-                    break;
-                }
-            }
-        }
-
-        if (!fileSent) {
+        if (activeRooms.has(cleanRoom)) {
+            const roomInfo = activeRooms.get(cleanRoom);
+            socket.emit('file-data', roomInfo.fileData);
+            io.to(roomInfo.socketId).emit('receiver-connected');
+            console.log(`[Success] File transferred for Room: ${cleanRoom}`);
+        } else {
+            console.log(`[Error] Room not found: ${cleanRoom}`);
             socket.emit('error-msg', 'Invalid code or room expired!');
         }
     });
 
-    // -------------------------------------------------------------
-    // 3. Disconnect Event
-    // -------------------------------------------------------------
     socket.on('disconnect', () => {
-        console.log(`[-] User Disconnected: ${socket.id}`);
+        // Clean up rooms hosted by disconnected user
+        for (const [room, data] of activeRooms.entries()) {
+            if (data.socketId === socket.id) {
+                activeRooms.delete(room);
+            }
+        }
     });
 });
 
-// Start Server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`================================================`);
     console.log(`🚀 ShareWithCare Server running on port ${PORT}`);
-    console.log(`🌐 Local Access: http://localhost:${PORT}`);
-    console.log(`================================================`);
 });
