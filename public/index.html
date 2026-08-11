@@ -73,7 +73,12 @@
         .code-display { font-size: 32px; font-weight: 800; color: #38bdf8; margin: 15px 0; letter-spacing: 6px; background: #090d16; padding: 12px; border-radius: 12px; border: 1px solid #1e293b; }
 
         #status { margin-top: 15px; font-size: 13px; color: #94a3b8; }
-        progress { width: 100%; height: 8px; border-radius: 4px; margin-top: 15px; overflow: hidden; appearance: none; }
+        
+        .transfer-stats {
+            display: none; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 12px; color: #38bdf8; font-weight: 600;
+        }
+
+        progress { width: 100%; height: 10px; border-radius: 5px; margin-top: 8px; overflow: hidden; appearance: none; }
         progress::-webkit-progress-bar { background-color: #090d16; }
         progress::-webkit-progress-value { background: linear-gradient(90deg, #7c3aed, #38bdf8); }
 
@@ -131,6 +136,12 @@
             </div>
 
             <p id="status">Select a file or enter code to start</p>
+            
+            <div class="transfer-stats" id="transfer-stats">
+                <span id="transferred-size">0 MB / 0 MB</span>
+                <span id="transfer-speed">0 MB/s</span>
+            </div>
+
             <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
             <a id="download-link" style="display:none;">Download Received File</a>
 
@@ -151,7 +162,9 @@
         let receivedSize = 0;
         let incomingFileInfo = null;
 
-        const CHUNK_SIZE = 64 * 1024; // 64 KB per chunk
+        // Optimized Chunk Size (512 KB for Ultra Fast Stream)
+        const CHUNK_SIZE = 512 * 1024; 
+        let startTime = 0;
 
         function switchTab(mode) {
             document.getElementById('send-tab-btn').classList.toggle('active', mode === 'send');
@@ -164,12 +177,20 @@
             return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
-        // Sender file selection
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Sender File Selection
         document.getElementById('file-input').addEventListener('change', (e) => {
             selectedFile = e.target.files[0];
             if (!selectedFile) return;
 
-            document.getElementById('upload-label').innerText = `✓ ${selectedFile.name}`;
+            document.getElementById('upload-label').innerText = `✓ ${selectedFile.name} (${formatBytes(selectedFile.size)})`;
             currentRoom = generateCode();
             document.getElementById('room-code-display').innerText = currentRoom;
             document.getElementById('code-container').style.display = 'block';
@@ -198,12 +219,14 @@
             socket.emit('request-file', { room: currentRoom });
         });
 
-        // Sender receives start signal from receiver
+        // Sender Starts Streaming Chunks
         socket.on('start-sending-file', () => {
-            document.getElementById('status').innerText = 'Streaming large file...';
+            document.getElementById('status').innerText = '🚀 Transferring File...';
             document.getElementById('progress-bar').style.display = 'block';
+            document.getElementById('transfer-stats').style.display = 'flex';
 
             let offset = 0;
+            startTime = Date.now();
             const reader = new FileReader();
 
             function readNextChunk() {
@@ -214,44 +237,60 @@
             reader.onload = (e) => {
                 socket.emit('send-file-chunk', {
                     room: currentRoom,
-                    chunk: e.target.result,
-                    offset: offset
+                    chunk: e.target.result
                 });
 
                 offset += e.target.result.byteLength;
                 const percent = Math.floor((offset / selectedFile.size) * 100);
+                
+                // Speed & MB Calculation
+                const elapsedTime = (Date.now() - startTime) / 1000; // seconds
+                const speed = (offset / elapsedTime) / (1024 * 1024); // MB/s
+
                 document.getElementById('progress-bar').value = percent;
+                document.getElementById('transferred-size').innerText = `${formatBytes(offset)} / ${formatBytes(selectedFile.size)} (${percent}%)`;
+                document.getElementById('transfer-speed').innerText = `${speed.toFixed(1)} MB/s`;
 
                 if (offset < selectedFile.size) {
                     readNextChunk();
                 } else {
-                    document.getElementById('status').innerText = 'Transfer complete! 🎉';
+                    document.getElementById('status').innerText = 'Transfer Complete! 🎉';
+                    document.getElementById('transfer-speed').innerText = 'Done!';
                 }
             };
 
             readNextChunk();
         });
 
-        // Receiver initialized
+        // Receiver Metadata Handshake
         socket.on('file-metadata', (info) => {
             incomingFileInfo = info;
             receivedChunks = [];
             receivedSize = 0;
+            startTime = Date.now();
+
             document.getElementById('status').innerText = `Receiving ${info.fileName}...`;
             document.getElementById('progress-bar').style.display = 'block';
+            document.getElementById('transfer-stats').style.display = 'flex';
         });
 
-        // Receiver receives chunk
+        // Receiver Processes Chunks Realtime
         socket.on('receive-file-chunk', (data) => {
             receivedChunks.push(data.chunk);
             receivedSize += data.chunk.byteLength;
 
             const percent = Math.floor((receivedSize / incomingFileInfo.fileSize) * 100);
+            const elapsedTime = (Date.now() - startTime) / 1000;
+            const speed = (receivedSize / elapsedTime) / (1024 * 1024);
+
             document.getElementById('progress-bar').value = percent;
+            document.getElementById('transferred-size').innerText = `${formatBytes(receivedSize)} / ${formatBytes(incomingFileInfo.fileSize)} (${percent}%)`;
+            document.getElementById('transfer-speed').innerText = `${speed.toFixed(1)} MB/s`;
 
             if (receivedSize >= incomingFileInfo.fileSize) {
-                document.getElementById('status').innerText = 'File received successfully! Click to download. 🎉';
-                
+                document.getElementById('status').innerText = 'File Received! Click below to download. 🎉';
+                document.getElementById('transfer-speed').innerText = '100% Saved';
+
                 const blob = new Blob(receivedChunks, { type: incomingFileInfo.fileType });
                 const url = URL.createObjectURL(blob);
 
