@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareWithCare - Next-Gen Encrypted P2P Transfer</title>
+    <title>ShareWithCare - Fast P2P File Transfer</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -162,8 +162,8 @@
         let receivedSize = 0;
         let incomingFileInfo = null;
 
-        // Optimized Chunk Size (512 KB for Ultra Fast Stream)
-        const CHUNK_SIZE = 512 * 1024; 
+        // Stable 64KB chunk to prevent WebSocket freeze
+        const CHUNK_SIZE = 64 * 1024; 
         let startTime = 0;
 
         function switchTab(mode) {
@@ -178,14 +178,14 @@
         }
 
         function formatBytes(bytes) {
-            if (bytes === 0) return '0 Bytes';
+            if (!bytes || bytes === 0) return '0 Bytes';
             const k = 1024;
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Sender File Selection
+        // Sender Select File
         document.getElementById('file-input').addEventListener('change', (e) => {
             selectedFile = e.target.files[0];
             if (!selectedFile) return;
@@ -204,13 +204,13 @@
             });
         });
 
-        // Receiver Connect Button
+        // Receiver Click Connect
         document.getElementById('connect-btn').addEventListener('click', (e) => {
             e.preventDefault();
             const inputCode = document.getElementById('room-code-input').value.trim().toUpperCase();
             
             if (!inputCode) {
-                alert('Please enter a valid code');
+                alert('Please enter code');
                 return;
             }
 
@@ -219,9 +219,9 @@
             socket.emit('request-file', { room: currentRoom });
         });
 
-        // Sender Starts Streaming Chunks
+        // Sender Starts Sending Chunks
         socket.on('start-sending-file', () => {
-            document.getElementById('status').innerText = '🚀 Transferring File...';
+            document.getElementById('status').innerText = 'Sending File...';
             document.getElementById('progress-bar').style.display = 'block';
             document.getElementById('transfer-stats').style.display = 'flex';
 
@@ -230,6 +230,11 @@
             const reader = new FileReader();
 
             function readNextChunk() {
+                if (offset >= selectedFile.size) {
+                    document.getElementById('status').innerText = 'Transfer Finished! 🎉';
+                    document.getElementById('transfer-speed').innerText = 'Complete';
+                    return;
+                }
                 const slice = selectedFile.slice(offset, offset + CHUNK_SIZE);
                 reader.readAsArrayBuffer(slice);
             }
@@ -242,27 +247,21 @@
 
                 offset += e.target.result.byteLength;
                 const percent = Math.floor((offset / selectedFile.size) * 100);
-                
-                // Speed & MB Calculation
-                const elapsedTime = (Date.now() - startTime) / 1000; // seconds
-                const speed = (offset / elapsedTime) / (1024 * 1024); // MB/s
+                const elapsedTime = (Date.now() - startTime) / 1000 || 0.1;
+                const speed = (offset / elapsedTime) / (1024 * 1024);
 
                 document.getElementById('progress-bar').value = percent;
-                document.getElementById('transferred-size').innerText = `${formatBytes(offset)} / ${formatBytes(selectedFile.size)} (${percent}%)`;
+                document.getElementById('transferred-size').innerText = `${formatBytes(offset)} / ${formatBytes(selectedFile.size)}`;
                 document.getElementById('transfer-speed').innerText = `${speed.toFixed(1)} MB/s`;
 
-                if (offset < selectedFile.size) {
-                    readNextChunk();
-                } else {
-                    document.getElementById('status').innerText = 'Transfer Complete! 🎉';
-                    document.getElementById('transfer-speed').innerText = 'Done!';
-                }
+                // Small setTimeout to unblock main browser UI thread
+                setTimeout(readNextChunk, 2);
             };
 
             readNextChunk();
         });
 
-        // Receiver Metadata Handshake
+        // Receiver Receives File Info
         socket.on('file-metadata', (info) => {
             incomingFileInfo = info;
             receivedChunks = [];
@@ -274,22 +273,22 @@
             document.getElementById('transfer-stats').style.display = 'flex';
         });
 
-        // Receiver Processes Chunks Realtime
+        // Receiver Accumulates Chunks
         socket.on('receive-file-chunk', (data) => {
             receivedChunks.push(data.chunk);
             receivedSize += data.chunk.byteLength;
 
             const percent = Math.floor((receivedSize / incomingFileInfo.fileSize) * 100);
-            const elapsedTime = (Date.now() - startTime) / 1000;
+            const elapsedTime = (Date.now() - startTime) / 1000 || 0.1;
             const speed = (receivedSize / elapsedTime) / (1024 * 1024);
 
             document.getElementById('progress-bar').value = percent;
-            document.getElementById('transferred-size').innerText = `${formatBytes(receivedSize)} / ${formatBytes(incomingFileInfo.fileSize)} (${percent}%)`;
+            document.getElementById('transferred-size').innerText = `${formatBytes(receivedSize)} / ${formatBytes(incomingFileInfo.fileSize)}`;
             document.getElementById('transfer-speed').innerText = `${speed.toFixed(1)} MB/s`;
 
             if (receivedSize >= incomingFileInfo.fileSize) {
-                document.getElementById('status').innerText = 'File Received! Click below to download. 🎉';
-                document.getElementById('transfer-speed').innerText = '100% Saved';
+                document.getElementById('status').innerText = 'File Received! Click to Download. 🎉';
+                document.getElementById('transfer-speed').innerText = '100%';
 
                 const blob = new Blob(receivedChunks, { type: incomingFileInfo.fileType });
                 const url = URL.createObjectURL(blob);
@@ -297,7 +296,7 @@
                 const downloadLink = document.getElementById('download-link');
                 downloadLink.href = url;
                 downloadLink.download = incomingFileInfo.fileName;
-                downloadLink.innerText = `Download: ${incomingFileInfo.fileName}`;
+                downloadLink.innerText = `Download (${formatBytes(incomingFileInfo.fileSize)})`;
                 downloadLink.style.display = 'inline-block';
             }
         });

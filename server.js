@@ -5,19 +5,23 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+
+// High Payload Limits for Socket.io
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8, // 100MB per frame limit
+    maxHttpBufferSize: 1e9, // 1 GB Buffer Limit
+    pingTimeout: 60000,
+    pingInterval: 25000,
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Store room details (Without keeping full file in RAM)
 const roomsMap = new Map();
 
 io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id);
 
-    // Register Sender
+    // Sender Registers Room
     socket.on('register-sender', ({ room, fileName, fileSize, fileType }) => {
         const cleanRoom = room.trim().toUpperCase();
         roomsMap.set(cleanRoom, {
@@ -27,10 +31,10 @@ io.on('connection', (socket) => {
             fileType
         });
         socket.join(cleanRoom);
-        console.log(`[Registered Room]: ${cleanRoom} (${fileName})`);
+        console.log(`[Room Created]: ${cleanRoom} for file ${fileName}`);
     });
 
-    // Request File
+    // Receiver Connects & Requests File
     socket.on('request-file', ({ room }) => {
         const cleanRoom = room.trim().toUpperCase();
 
@@ -41,21 +45,20 @@ io.on('connection', (socket) => {
             // Send metadata to receiver
             socket.emit('file-metadata', roomInfo);
 
-            // Ask sender to start streaming chunks
+            // Signal sender to start stream
             io.to(roomInfo.senderSocketId).emit('start-sending-file');
-            console.log(`[Stream Started]: Room ${cleanRoom}`);
+            console.log(`[Stream Started]: ${cleanRoom}`);
         } else {
-            socket.emit('error-msg', 'Invalid code or room expired!');
+            socket.emit('error-msg', 'Invalid or expired room code!');
         }
     });
 
-    // Pipe Chunks Directly to Room (Memory Light Stream)
-    socket.on('send-file-chunk', ({ room, chunk, offset }) => {
+    // Fast Stream Relay
+    socket.on('send-file-chunk', ({ room, chunk }) => {
         const cleanRoom = room.trim().toUpperCase();
-        socket.to(cleanRoom).emit('receive-file-chunk', { chunk, offset });
+        socket.to(cleanRoom).emit('receive-file-chunk', { chunk });
     });
 
-    // Handle Disconnection
     socket.on('disconnect', () => {
         for (const [room, data] of roomsMap.entries()) {
             if (data.senderSocketId === socket.id) {
@@ -67,5 +70,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 ShareWithCare Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
