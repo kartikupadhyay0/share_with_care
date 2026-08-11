@@ -5,8 +5,10 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8 // 100 MB buffer
+    maxHttpBufferSize: 1e8, // 100MB Max
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -32,21 +34,21 @@ io.on('connection', (socket) => {
             socket.join(cleanRoom);
 
             if (!roomInfo.isLarge) {
-                // Small File Mode -> Send Instantly!
+                // Instant Small File Route
                 socket.emit('receive-file-small', {
                     fileName: roomInfo.fileName,
                     fileData: roomInfo.fileData,
                     fileType: roomInfo.fileType
                 });
             } else {
-                // Large File Mode -> Start Stream & Handshake
+                // Stream Large File Route
                 socket.emit('file-metadata-large', {
                     fileName: roomInfo.fileName,
                     fileSize: roomInfo.fileSize,
                     fileType: roomInfo.fileType
                 });
 
-                // Trigger Sender to stream
+                // Request Sender to stream
                 io.to(roomInfo.senderSocketId).emit('start-sending-file');
             }
         } else {

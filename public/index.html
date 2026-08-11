@@ -152,8 +152,8 @@
         let receivedSize = 0;
         let incomingFileInfo = null;
 
-        const LARGE_FILE_LIMIT = 50 * 1024 * 1024; // 50 MB threshold
-        const CHUNK_SIZE = 64 * 1024; // 64 KB per chunk
+        const FIFTY_MB = 50 * 1024 * 1024; // 50MB Threshold
+        const CHUNK_SIZE = 128 * 1024; // Fast 128KB chunks
 
         function switchTab(mode) {
             document.getElementById('send-tab-btn').classList.toggle('active', mode === 'send');
@@ -166,7 +166,7 @@
             return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
-        // Sender File Selection
+        // Sender File Selection Logic
         document.getElementById('file-input').addEventListener('change', (e) => {
             selectedFile = e.target.files[0];
             if (!selectedFile) return;
@@ -175,10 +175,10 @@
             currentRoom = generateCode();
             document.getElementById('room-code-display').innerText = currentRoom;
             document.getElementById('code-container').style.display = 'block';
-            document.getElementById('status').innerText = 'Share code with receiver';
 
-            if (selectedFile.size < LARGE_FILE_LIMIT) {
-                // Small File (<50MB): Read instantly into memory
+            if (selectedFile.size < FIFTY_MB) {
+                // SMALL FILE (<50MB): INSTANT WAY
+                document.getElementById('status').innerText = 'Share code with receiver';
                 const reader = new FileReader();
                 reader.onload = () => {
                     socket.emit('register-sender', {
@@ -186,13 +186,16 @@
                         fileName: selectedFile.name,
                         fileData: reader.result,
                         fileType: selectedFile.type,
-                        fileSize: selectedFile.size,
                         isLarge: false
                     });
                 };
                 reader.readAsArrayBuffer(selectedFile);
             } else {
-                // Large File (>=50MB): Stream Mode
+                // LARGE FILE (>=50MB): POPUP ALERT & CHUNK STREAMING
+                alert("⚠️ File size is large (>50MB)!\nThis transfer will use fast streaming mode. Please stay on this tab during transfer.");
+                
+                document.getElementById('status').innerText = 'Large file ready. Share code with receiver!';
+                
                 socket.emit('register-sender', {
                     room: currentRoom,
                     fileName: selectedFile.name,
@@ -218,7 +221,7 @@
             socket.emit('request-file', { room: currentRoom });
         });
 
-        // Large File Sender Stream Trigger
+        // Sender Stream Handler (Large File)
         socket.on('start-sending-file', () => {
             document.getElementById('status').innerText = 'Sending large file... Please wait';
             const progressBar = document.getElementById('progress-bar');
@@ -245,7 +248,7 @@
                 offset += e.target.result.byteLength;
                 const percent = Math.floor((offset / selectedFile.size) * 100);
                 progressBar.value = percent;
-                document.getElementById('status').innerText = `Sending file... ${percent}% (Please wait)`;
+                document.getElementById('status').innerText = `Sending file... ${percent}% completed`;
 
                 setTimeout(readNextChunk, 1);
             };
@@ -253,7 +256,7 @@
             readNextChunk();
         });
 
-        // Receiver: Small File Instant Receive
+        // Receiver: Instant Small File Receive
         socket.on('receive-file-small', (data) => {
             document.getElementById('status').innerText = 'File ready to download! 🎉';
             const blob = new Blob([data.fileData], { type: data.fileType });
@@ -266,24 +269,26 @@
             downloadLink.style.display = 'inline-block';
         });
 
-        // Receiver: Large File Start Handshake
+        // Receiver: Large File Stream Start
         socket.on('file-metadata-large', (info) => {
             incomingFileInfo = info;
             receivedChunks = [];
             receivedSize = 0;
 
-            document.getElementById('status').innerText = 'This takes time, please wait... 0%';
-            document.getElementById('progress-bar').style.display = 'block';
+            document.getElementById('status').innerText = 'Receiving large file... 0%';
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.display = 'block';
+            progressBar.value = 0;
         });
 
-        // Receiver: Large File Chunk Processing
+        // Receiver: Processing Chunks & Live Progress
         socket.on('receive-file-chunk', (data) => {
             receivedChunks.push(data.chunk);
             receivedSize += data.chunk.byteLength;
 
             const percent = Math.floor((receivedSize / incomingFileInfo.fileSize) * 100);
             document.getElementById('progress-bar').value = percent;
-            document.getElementById('status').innerText = `This takes time, please wait... ${percent}%`;
+            document.getElementById('status').innerText = `Receiving file... ${percent}% (${(receivedSize / (1024 * 1024)).toFixed(1)}MB / ${(incomingFileInfo.fileSize / (1024 * 1024)).toFixed(1)}MB)`;
 
             if (receivedSize >= incomingFileInfo.fileSize) {
                 document.getElementById('status').innerText = 'File received successfully! Click to download. 🎉';
