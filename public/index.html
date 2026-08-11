@@ -81,6 +81,27 @@
             text-align: center;
         }
 
+        /* Screen App Install Button Style */
+        .install-pwa-btn {
+            display: none; /* Auto shows when browser is ready */
+            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            z-index: 20;
+        }
+        .install-pwa-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6);
+        }
+
         /* Main Content Container */
         .main-container {
             display: flex;
@@ -362,6 +383,9 @@
         </div>
     </nav>
 
+    <!-- On-Screen Install App Button -->
+    <button id="install-app-btn" class="install-pwa-btn">📲 Install ShareWithCare App</button>
+
     <!-- Main Section Container -->
     <div class="main-container">
         <!-- Header -->
@@ -415,10 +439,33 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
-                    .then(() => console.log('PWA Service Worker Registered Successfully!'))
+                    .then(() => console.log('PWA Service Worker Registered!'))
                     .catch((err) => console.log('SW Registration Failed:', err));
             });
         }
+
+        // Direct Screen App Download Button Logic
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-app-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'inline-block'; // Shows button on screen
+        });
+
+        installBtn.addEventListener('click', () => {
+            installBtn.style.display = 'none';
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
 
         const socket = io();
         let currentRoom = '';
