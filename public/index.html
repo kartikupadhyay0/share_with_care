@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShareWithCare - Next-Gen Liquid Glass Encrypted P2P Transfer</title>
+    
+    <!-- PWA Manifest & Theme Color -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#070913">
+
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * {
@@ -406,6 +411,15 @@
     </footer>
 
     <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(() => console.log('PWA Service Worker Registered Successfully!'))
+                    .catch((err) => console.log('SW Registration Failed:', err));
+            });
+        }
+
         const socket = io();
         let currentRoom = '';
 

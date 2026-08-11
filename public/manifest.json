@@ -1,0 +1,21 @@
+{
+  "name": "ShareWithCare",
+  "short_name": "ShareWithCare",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070913",
+  "theme_color": "#070913",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2989/2989976.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2989/2989976.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
